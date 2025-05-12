@@ -1,29 +1,23 @@
-const express  = require('express');
-const mongoose = require('mongoose');
+import dotenv from 'dotenv';
+dotenv.config();
+import express from 'express';
+import connectDB from './config/db.js';
+import employeeRoutes from './routes/Routes.js';
+import errorHandler from './middleware/ErrorHandler.js';
+
 const app = express();
 
-mongoose.connect("mongodb+srv://huynhtiennhat0403:admin@mycluster.nqkdjxc.mongodb.net/crud")
+// Connect to MongoDB Atlas
+connectDB();
 
-const userSchema = new mongoose.Schema({
-    name: String,
-    age: Number,
-    email: String
-})
+// Middleware
+app.use(express.json());
 
-const userModel = mongoose.model("User", userSchema);
+// Routes
+app.use('/api/employees', employeeRoutes);
 
-const user1 = new userModel({
-    name: "Nguyen Van A",
-    age: 20,
-    email: "nguyenvanA@gmail.com"
-})
+// Error Handler
+app.use(errorHandler);
 
-user1.save().then(() => {
-    console.log("User saved successfully");
-}).catch((err) => {
-    console.log("Error saving user: ", err);
-})
-
-app.listen(3001, () => {
-    console.log("Server is running on port 3001");
-})
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
