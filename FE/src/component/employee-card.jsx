@@ -30,44 +30,50 @@ const EmployeeCard = ({ employee, onViewDetails, onEdit, onDelete }) => {
         p: 2,
         borderRadius: 2,
         boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-        height: 80, // Fixed height for consistency
-        width: "100%", // Ensure full width
+        height: 80,
+        width: "100%",
+        minWidth: 0,
+        maxWidth: "100%", // Ngăn vượt quá container
+        flexShrink: 0, // Không co lại
+        flexGrow: 0, // Không tự lớn lên
+        overflow: "hidden", // Ngăn tràn
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center" }}>
+      <Box sx={{ display: "flex", alignItems: "center", minWidth: 0, flex: 1, overflow: "hidden" }}>
         <Avatar
           sx={{
             bgcolor: getAvatarColor(employee.name),
             mr: 2,
             width: 48,
             height: 48,
+            flexShrink: 0,
           }}
         >
           {getInitials(employee.name)}
         </Avatar>
-        <Box>
-          <Typography variant="body1" fontWeight="bold">
+        <Box sx={{ minWidth: 0, overflow: "hidden" }}>
+          <Typography variant="body1" fontWeight="bold" noWrap>
             {employee.name}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" noWrap>
             {employee.position || "USER"}
           </Typography>
         </Box>
       </Box>
-      <Box sx={{ display: "flex", alignItems: "center", ml: 2 }}> {/* Thêm ml: 2 để hở ra */}
+      <Box sx={{ display: "flex", alignItems: "center", ml: 2, flexShrink: 0, whiteSpace: "nowrap" }}> {/* Ngăn wrap nút */}
         <Button
           variant="contained"
           color="primary"
           onClick={() => onViewDetails(employee)}
-          sx={{ mr: 1, borderRadius: 20 }}
+          sx={{ mr: 1, borderRadius: 20, minWidth: 120 }} // Đặt minWidth cố định
         >
           View Details
         </Button>
         <Button
           variant="contained"
-          color="info" // Changed to info for blue color
+          color="info"
           onClick={() => onEdit(employee)}
-          sx={{ mr: 1, borderRadius: 20 }}
+          sx={{ mr: 1, borderRadius: 20, minWidth: 80 }} // Đặt minWidth cố định
         >
           Edit
         </Button>
@@ -75,7 +81,7 @@ const EmployeeCard = ({ employee, onViewDetails, onEdit, onDelete }) => {
           variant="contained"
           color="error"
           onClick={() => onDelete(employee)}
-          sx={{ borderRadius: 20 }}
+          sx={{ borderRadius: 20, minWidth: 80 }} // Đặt minWidth cố định
         >
           Delete
         </Button>

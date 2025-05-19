@@ -3,12 +3,11 @@ import {
   Box, Typography, Paper, Button, TextField, Dialog, DialogActions,
   DialogContent, DialogContentText, DialogTitle, MenuItem, Select,
   FormControl, InputLabel, Grid, Chip, CircularProgress, Alert,
-  Snackbar, Container
+  Snackbar, Container, IconButton, Avatar
 } from "@mui/material";
-import { Search as SearchIcon, Clear as ClearIcon } from "@mui/icons-material";
+import { Search as SearchIcon, Clear as ClearIcon, Info, Edit, Delete } from "@mui/icons-material";
 import EmployeeDetails from "./employee-details";
 import EmployeeForm from "./employee-form";
-import EmployeeCard from "./employee-card";
 
 const API_URL = "/api/employees";
 
@@ -33,7 +32,6 @@ const EmployeeList = () => {
     fetchEmployees();
   }, []);
 
-  // Fetch employees with optional query
   const fetchEmployees = async (endpoint = API_URL, queryParams = {}) => {
     setLoading(true);
     try {
@@ -41,20 +39,24 @@ const EmployeeList = () => {
       const params = new URLSearchParams(queryParams).toString();
       if (params) url += `?${params}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch employees");
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed to fetch employees: ${res.status} ${res.statusText} - ${errorText}`);
+      }
       const data = await res.json();
-      if (!Array.isArray(data)) throw new Error("Invalid data format");
+      if (!Array.isArray(data)) throw new Error("Invalid data format: " + JSON.stringify(data));
       setEmployees(data);
       setError(null);
     } catch (err) {
       setError(err.message);
       setEmployees([]);
+      // Log lỗi ra console để dễ debug
+      console.error("Fetch employees error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle search/filter
   const handleSearch = () => {
     if (!searchValue.trim()) {
       fetchEmployees();
@@ -85,39 +87,34 @@ const EmployeeList = () => {
 
     fetchEmployees(endpoint, queryParams)
       .then(() => setActiveFilter({ type: searchType, value: searchValue.trim() }))
-      .catch((err) => {
+      .catch(() => {
         setError("Failed to fetch employees with the search criteria.");
         setEmployees([]);
         setActiveFilter(null);
       });
   };
 
-  // Clear search/filter
   const clearSearch = () => {
     setSearchValue("");
     fetchEmployees();
     setActiveFilter(null);
   };
 
-  // Handle view details
   const handleViewDetails = (employee) => {
     setSelectedEmployee(employee);
     setOpenDetails(true);
   };
 
-  // Handle edit
   const handleEdit = (employee) => {
     setSelectedEmployee(employee);
     setOpenEdit(true);
   };
 
-  // Handle delete confirmation dialog
   const handleDeleteConfirm = (employee) => {
     setSelectedEmployee(employee);
     setOpenDelete(true);
   };
 
-  // Handle delete employee
   const handleDelete = async () => {
     try {
       await fetch(`${API_URL}/${selectedEmployee._id}`, { method: "DELETE" });
@@ -137,181 +134,251 @@ const EmployeeList = () => {
     }
   };
 
-  // Close snackbar
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  const getInitials = (name) => {
+    if (!name) return "??";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  const getAvatarColor = (name) => {
+    const colors = ["#4caf50", "#66bb6a", "#81c784", "#a5d6a7"];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   return (
-    <Container
-      maxWidth={false} // Remove width limit to span full page
-      sx={{
-        py: 4,
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        bgcolor: "#f5f5f5",
-      }}
-    >
-      <Typography
-        variant="h4"
-        gutterBottom
-        fontWeight="bold"
-        sx={{ mb: 4, color: "#333", pl: 2 }}
-      >
-        User Management
-      </Typography>
-
-      {/* Search/Filter Section */}
-      <Paper
-        sx={{
-          p: 3,
-          mb: 4,
-          borderRadius: 2,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        }}
-      >
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={3}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="search-type-label">Search By</InputLabel>
-              <Select
-                labelId="search-type-label"
-                value={searchType}
-                label="Search By"
-                onChange={(e) => setSearchType(e.target.value)}
-              >
-                <MenuItem value="name">Name</MenuItem>
-                <MenuItem value="department">Department</MenuItem>
-                <MenuItem value="position">Position</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              size="small"
-              label={`Search by ${searchType}`}
-              variant="outlined"
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-            />
-          </Grid>
-          <Grid item xs={6} sm={1.5}>
-            <Button
-              fullWidth
-              variant="contained"
-              color="primary"
-              startIcon={<SearchIcon />}
-              onClick={handleSearch}
-              sx={{ borderRadius: 20 }}
-            >
-              Search
-            </Button>
-          </Grid>
-          <Grid item xs={6} sm={1.5}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<ClearIcon />}
-              onClick={clearSearch}
-              sx={{ borderRadius: 20 }}
-            >
-              Clear
-            </Button>
-          </Grid>
-        </Grid>
-
-        {activeFilter && (
-          <Box sx={{ mt: 2 }}>
-            <Chip
-              label={`Filter: ${activeFilter.type} = ${activeFilter.value}`}
-              onDelete={clearSearch}
-              color="primary"
-              variant="outlined"
-            />
-          </Box>
-        )}
-      </Paper>
-
-      {/* User Cards */}
-      <Box
-        sx={{
-          flexGrow: 1,
-          overflowY: "auto",
-          bgcolor: "#fff",
-          borderRadius: 2,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-          p: 3,
-        }}
-      >
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 5 }}>
-            <CircularProgress />
-          </Box>
-        ) : error ? (
-          <Alert severity="error" sx={{ my: 2 }}>
-            {error}
-          </Alert>
-        ) : employees.length === 0 ? (
-          <Alert severity="info" sx={{ my: 2 }}>
-            No users found
-          </Alert>
-        ) : (
-          <Grid container spacing={3} sx={{ width: "100%" }}>
-            {employees.map((employee, index) => (
-              <Grid item xs={12} sm={6} key={employee._id}>
-                <EmployeeCard
-                  employee={employee}
-                  onViewDetails={handleViewDetails}
-                  onEdit={handleEdit}
-                  onDelete={handleDeleteConfirm}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        )}
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh',
+      width: '100vw',
+      m: 0,
+      p: 0,
+      bgcolor: '#f8f9fa'
+    }}>
+      {/* App Bar */}
+      <Box sx={{
+        bgcolor: 'primary.main',
+        color: 'white',
+        p: 2,
+        boxShadow: 3
+      }}>
+        <Typography variant="h4" fontWeight="bold">
+          User Management
+        </Typography>
       </Box>
 
-      {/* Employee Details Dialog */}
-      {selectedEmployee && (
-        <EmployeeDetails
-          open={openDetails}
-          employee={selectedEmployee}
-          onClose={() => setOpenDetails(false)}
-        />
-      )}
+      {/* Main Content */}
+      <Container maxWidth={false} sx={{
+        flex: 1,
+        p: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 3,
+        width: '100%',
+        maxWidth: 'none'
+      }}>
+        {/* Search Section */}
+        <Paper elevation={3} sx={{
+          p: 3,
+          borderRadius: 2,
+          width: '100%'
+        }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth size="medium">
+                <InputLabel>Search By</InputLabel>
+                <Select
+                  value={searchType}
+                  label="Search By"
+                  onChange={(e) => setSearchType(e.target.value)}
+                >
+                  <MenuItem value="name">Name</MenuItem>
+                  <MenuItem value="department">Department</MenuItem>
+                  <MenuItem value="position">Position</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label={`Search by ${searchType}`}
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+              />
+            </Grid>
+            <Grid item xs={6} md={2}>
+              <Button 
+                fullWidth 
+                variant="contained" 
+                color="primary" 
+                startIcon={<SearchIcon />}
+                onClick={handleSearch}
+                size="large"
+              >
+                Search
+              </Button>
+            </Grid>
+            <Grid item xs={6} md={1}>
+              <Button 
+                fullWidth 
+                variant="outlined" 
+                startIcon={<ClearIcon />}
+                onClick={clearSearch}
+                size="large"
+              >
+                Clear
+              </Button>
+            </Grid>
+          </Grid>
+        </Paper>
 
-      {/* Employee Edit Dialog */}
-      {selectedEmployee && (
-        <EmployeeForm
-          open={openEdit}
-          employee={selectedEmployee}
-          onClose={() => setOpenEdit(false)}
-          onSave={(updatedEmployee) => {
-            setEmployees(
-              employees.map((emp) =>
-                emp._id === updatedEmployee._id ? updatedEmployee : emp
-              )
-            );
-            setOpenEdit(false);
-            setSnackbar({
-              open: true,
-              message: "Employee updated successfully",
-              severity: "success",
-            });
-          }}
-        />
-      )}
+        {/* Employee List Section */}
+        <Paper elevation={3} sx={{
+          flex: 1,
+          p: 2,
+          borderRadius: 2,
+          width: '100%',
+          minHeight: '60vh',
+          overflow: 'hidden'
+        }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress size={80} />
+            </Box>
+          ) : error ? (
+            <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>
+          ) : employees.length === 0 ? (
+            <Alert severity="info" sx={{ m: 2 }}>No employees found</Alert>
+          ) : (
+            <Box sx={{
+              height: '100%',
+              overflowY: 'auto',
+              '&::-webkit-scrollbar': { width: '10px' },
+              '&::-webkit-scrollbar-thumb': { 
+                backgroundColor: 'primary.main', 
+                borderRadius: '5px' 
+              }
+            }}>
+              <Grid container spacing={3}>
+                {employees.map((employee) => (
+                  <Grid item xs={12} md={6} key={employee._id} sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                  }}>
+                    <Paper sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      flexDirection: 'row',
+                      p: 3,
+                      width: { xs: '100%', md: '99%' }, // tăng width lên 99% trên desktop
+                      minWidth: 0,
+                      maxWidth: 'none',
+                      minHeight: 100,
+                      borderRadius: 2,
+                      bgcolor: 'background.paper',
+                      boxShadow: 2,
+                      transition: 'all 0.3s ease',
+                      '&:hover': { 
+                        transform: 'translateY(-3px)', 
+                        boxShadow: 4 
+                      }
+                    }}>
+                      {/* Avatar và thông tin */}
+                      <Avatar sx={{
+                        bgcolor: getAvatarColor(employee.name),
+                        width: 56,
+                        height: 56,
+                        mr: 2,
+                        fontSize: '1.2rem',
+                        flexShrink: 0
+                      }}>
+                        {getInitials(employee.name)}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="h6" fontWeight="bold">
+                          {employee.name}
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary" noWrap>
+                          {employee.position}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 2, ml: 2 }}>
+                        <Button
+                          variant="contained"
+                          color="secondary"
+                          onClick={() => handleViewDetails(employee)}
+                          sx={{ minWidth: 120, bgcolor: '#7c4dff' }}
+                        >
+                          View Details
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={() => handleEdit(employee)}
+                          sx={{ minWidth: 100 }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="error"
+                          onClick={() => handleDeleteConfirm(employee)}
+                          sx={{ minWidth: 100 }}
+                        >
+                          Delete
+                        </Button>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
+        </Paper>
+      </Container>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Modals và Snackbar (giữ nguyên) */}
+      <EmployeeDetails 
+        open={openDetails} 
+        employee={selectedEmployee} 
+        onClose={() => setOpenDetails(false)} 
+      />
+
+      <EmployeeForm
+        open={openEdit}
+        employee={selectedEmployee}
+        onClose={() => setOpenEdit(false)}
+        onSave={(updatedEmployee) => {
+          setEmployees(employees.map((emp) => 
+            emp._id === updatedEmployee._id ? updatedEmployee : emp
+          ));
+          setOpenEdit(false);
+          setSnackbar({
+            open: true,
+            message: "Employee updated successfully",
+            severity: "success",
+          });
+        }}
+      />
+
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete {selectedEmployee?.name}? This action
-            cannot be undone.
+            Are you sure you want to delete {selectedEmployee?.name}? This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -322,22 +389,21 @@ const EmployeeList = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={snackbar.severity} 
+          sx={{ width: '100%' }}
         >
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </Box>
   );
 };
 

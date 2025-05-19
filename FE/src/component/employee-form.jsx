@@ -111,8 +111,6 @@ const EmployeeForm = ({ open, employee, onClose, onSave }) => {
                 >
                   <MenuItem value="Staff">Staff</MenuItem>
                   <MenuItem value="Manager">Manager</MenuItem>
-                  <MenuItem value="Director">Director</MenuItem>
-                  <MenuItem value="VP">VP</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
